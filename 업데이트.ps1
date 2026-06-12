@@ -3,9 +3,11 @@
 
 Write-Host "=== 청정모임 일정/주소록 인터넷 업데이트 ==="
 
-# 1. 다운로드 폴더에서 가장 최근 백업 파일 찾기
-$backup = Get-ChildItem "$env:USERPROFILE\Downloads\청정모임_백업_*.json" -ErrorAction SilentlyContinue |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+# 1. 다운로드 폴더에서 가장 최근 백업 파일 찾기 (이 PC는 Edge가 C:\Download에 저장함)
+$folders = @("$env:USERPROFILE\Downloads", "C:\Download", "$env:USERPROFILE\Desktop")
+$backup = $folders | ForEach-Object {
+    Get-ChildItem "$_\청정모임_백업_*.json" -ErrorAction SilentlyContinue
+} | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
 if (-not $backup) {
     Write-Host ""
