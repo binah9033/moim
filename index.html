@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>청정모임 일정 안내</title>
+<title>청정모임 안내</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -15,47 +15,90 @@
   header { background: #2e7d52; color: #fff; padding: 18px 20px; }
   header h1 { font-size: 1.25rem; }
   header .sub { font-size: .78rem; opacity: .85; margin-top: 4px; }
+  nav { display: flex; background: #fff; border-bottom: 2px solid #ddd; }
+  nav button {
+    flex: 1; padding: 13px; border: none; background: none;
+    font-size: 1rem; cursor: pointer; color: #888;
+    border-bottom: 3px solid transparent; font-weight: bold;
+  }
+  nav button.active { color: #2e7d52; border-bottom-color: #2e7d52; }
   main { max-width: 860px; margin: 0 auto; padding: 20px 16px; }
+  .tab { display: none; }
+  .tab.active { display: block; }
   .item {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
+    background: #fff; border: 1px solid #ddd; border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 10px;
   }
   .item.past { opacity: .55; }
   .item.today { border: 2px solid #2e7d52; background: #e8f3ed; }
   .item-title { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
   .item-sub { font-size: .85rem; color: #555; line-height: 1.6; word-break: break-all; }
   .badge {
-    display: inline-block;
-    font-size: .72rem;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: #2e7d52;
-    color: #fff;
-    margin-left: 6px;
-    vertical-align: middle;
+    display: inline-block; font-size: .72rem; padding: 2px 8px;
+    border-radius: 10px; background: #2e7d52; color: #fff;
+    margin-left: 6px; vertical-align: middle;
   }
   .badge.gray { background: #999; }
   .empty { text-align: center; color: #999; padding: 30px 0; font-size: .9rem; }
   .count { font-size: .85rem; color: #777; margin-bottom: 10px; }
+  input[type=search], input[type=password] {
+    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 1rem; font-family: inherit;
+  }
+  input[type=search] { margin-bottom: 12px; }
+  .lock-box {
+    background: #fff; border: 1px solid #ddd; border-radius: 10px;
+    padding: 24px 18px; text-align: center;
+  }
+  .lock-box p { font-size: .9rem; color: #555; margin-bottom: 14px; }
+  .lock-box .pw-row { display: flex; gap: 8px; max-width: 360px; margin: 0 auto; }
+  .lock-box button {
+    padding: 10px 18px; border: none; border-radius: 6px;
+    background: #2e7d52; color: #fff; font-weight: bold;
+    font-size: .95rem; cursor: pointer; flex-shrink: 0;
+  }
+  .lock-error { color: #c0392b; font-size: .85rem; margin-top: 10px; display: none; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>🌿 청정모임 일정 안내</h1>
+  <h1>🌿 청정모임 안내</h1>
   <div class="sub" id="subInfo">문의는 총무에게 연락 주세요</div>
 </header>
 
+<nav id="nav" style="display:none">
+  <button id="navS" class="active" onclick="showTab(0)">📅 모임 일정</button>
+  <button id="navM" onclick="showTab(1)">🏠 회원 주소록</button>
+</nav>
+
 <main>
-  <div class="count" id="schCount"></div>
-  <div id="schList"></div>
+  <section id="tabS" class="tab active">
+    <div class="count" id="schCount"></div>
+    <div id="schList"></div>
+  </section>
+
+  <section id="tabM" class="tab">
+    <div class="lock-box" id="lockBox">
+      <p>🔒 회원 주소록은 모임 비밀번호를 입력해야 볼 수 있습니다.</p>
+      <div class="pw-row">
+        <input type="password" id="pwInput" placeholder="모임 비밀번호">
+        <button onclick="unlock()">열기</button>
+      </div>
+      <div class="lock-error" id="lockError">비밀번호가 올바르지 않습니다.</div>
+    </div>
+    <div id="memArea" style="display:none">
+      <input type="search" id="q" placeholder="🔍 이름·주소·연락처·차량번호 검색" oninput="renderM()">
+      <div class="count" id="memCount"></div>
+      <div id="memList"></div>
+    </div>
+  </section>
 </main>
 
 <script src="data.js"></script>
 <script>
+var MEMBERS = null;
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
@@ -72,6 +115,14 @@ function dday(s) {
   if (diff > 0) return 'D-' + diff;
   return (-diff) + '일 지남';
 }
+function showTab(i) {
+  document.getElementById('tabS').className = i === 0 ? 'tab active' : 'tab';
+  document.getElementById('tabM').className = i === 1 ? 'tab active' : 'tab';
+  document.getElementById('navS').className = i === 0 ? 'active' : '';
+  document.getElementById('navM').className = i === 1 ? 'active' : '';
+}
+
+/* ===== 일정 ===== */
 function row(s, isPast, today) {
   var h = '<div class="item ' + (isPast ? 'past' : '') + (s.date === today ? ' today' : '') + '">'
     + '<div class="item-title">' + esc(s.title)
@@ -82,10 +133,7 @@ function row(s, isPast, today) {
   h += '</div></div>';
   return h;
 }
-(function render() {
-  if (typeof MADE !== 'undefined' && MADE) {
-    document.getElementById('subInfo').textContent = MADE + ' 업데이트 · 문의는 총무에게 연락 주세요';
-  }
+function renderS() {
   var today = todayStr();
   var schedules = (typeof DATA !== 'undefined' && DATA.schedules) ? DATA.schedules : [];
   var up = schedules.filter(function(s){ return s.date >= today; })
@@ -100,7 +148,83 @@ function row(s, isPast, today) {
       + past.map(function(s){ return row(s, true, today); }).join('');
   }
   document.getElementById('schList').innerHTML = h || '<div class="empty">등록된 일정이 없습니다.</div>';
-})();
+}
+
+/* ===== 주소록 (암호화 해제) ===== */
+function b64(s) {
+  var bin = atob(s), arr = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+function unlock() {
+  var pw = document.getElementById('pwInput').value;
+  var err = document.getElementById('lockError');
+  err.style.display = 'none';
+  if (!pw || typeof MEMBERS_ENC === 'undefined' || !MEMBERS_ENC) return;
+  var salt = b64(MEMBERS_ENC.salt), iv = b64(MEMBERS_ENC.iv),
+      ct = b64(MEMBERS_ENC.ct), mac = b64(MEMBERS_ENC.mac);
+  var ivct = new Uint8Array(iv.length + ct.length);
+  ivct.set(iv, 0); ivct.set(ct, iv.length);
+  crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits'])
+  .then(function(baseKey) {
+    return crypto.subtle.deriveBits({name:'PBKDF2', salt:salt, iterations:100000, hash:'SHA-256'}, baseKey, 512);
+  })
+  .then(function(bits) {
+    var keys = new Uint8Array(bits);
+    var aesRaw = keys.slice(0, 32), macRaw = keys.slice(32);
+    return Promise.all([
+      crypto.subtle.importKey('raw', aesRaw, {name:'AES-CBC'}, false, ['decrypt']),
+      crypto.subtle.importKey('raw', macRaw, {name:'HMAC', hash:'SHA-256'}, false, ['verify'])
+    ]);
+  })
+  .then(function(ks) {
+    return crypto.subtle.verify('HMAC', ks[1], mac, ivct).then(function(ok) {
+      if (!ok) throw new Error('bad-password');
+      return crypto.subtle.decrypt({name:'AES-CBC', iv:iv}, ks[0], ct);
+    });
+  })
+  .then(function(pt) {
+    MEMBERS = JSON.parse(new TextDecoder().decode(pt));
+    document.getElementById('lockBox').style.display = 'none';
+    document.getElementById('memArea').style.display = '';
+    renderM();
+  })
+  .catch(function(e) {
+    err.style.display = 'block';
+  });
+}
+document.getElementById('pwInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') unlock();
+});
+
+function renderM() {
+  if (!MEMBERS) return;
+  var q = document.getElementById('q').value.trim().toLowerCase();
+  var sorted = MEMBERS.slice().sort(function(a,b){ return a.name.localeCompare(b.name, 'ko'); });
+  var shown = q ? sorted.filter(function(m) {
+    return ((m.name||'') + (m.addr||'') + (m.phone||'') + (m.car||'') + (m.memo||'')).toLowerCase().indexOf(q) > -1;
+  }) : sorted;
+  document.getElementById('memCount').textContent =
+    '전체 ' + MEMBERS.length + '명' + (q ? ' · 검색 결과 ' + shown.length + '명' : '');
+  document.getElementById('memList').innerHTML = shown.length ? shown.map(function(m) {
+    var h = '<div class="item"><div class="item-title">' + esc(m.name) + '</div><div class="item-sub">';
+    if (m.phone) h += '📞 ' + esc(m.phone) + '<br>';
+    if (m.car) h += '🚗 ' + esc(m.car) + '<br>';
+    if (m.addr) h += '🏠 ' + esc(m.addr) + '<br>';
+    if (m.memo) h += '📝 ' + esc(m.memo);
+    h += '</div></div>';
+    return h;
+  }).join('') : '<div class="empty">검색 결과가 없습니다.</div>';
+}
+
+/* ===== 초기 표시 ===== */
+if (typeof MADE !== 'undefined' && MADE) {
+  document.getElementById('subInfo').textContent = MADE + ' 업데이트 · 문의는 총무에게 연락 주세요';
+}
+renderS();
+if (typeof MEMBERS_ENC !== 'undefined' && MEMBERS_ENC) {
+  document.getElementById('nav').style.display = 'flex';
+}
 </script>
 </body>
 </html>
