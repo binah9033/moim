@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>청정모임 안내</title>
+<meta name="description" content="청정모임 일정과 모임 안내를 한눈에 확인하세요.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="🌿 청정모임 안내">
+<meta property="og:description" content="모임 일정을 한눈에 확인하세요. 장소를 누르면 길찾기도 됩니다.">
+<meta property="og:image" content="https://binah9033.github.io/moim/card.png?v=1">
+<meta property="og:image:width" content="800">
+<meta property="og:image:height" content="400">
+<meta property="og:url" content="https://binah9033.github.io/moim/">
+<meta name="theme-color" content="#2e7d52">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -58,6 +67,10 @@
     font-size: .95rem; cursor: pointer; flex-shrink: 0;
   }
   .lock-error { color: #c0392b; font-size: .85rem; margin-top: 10px; display: none; }
+  .maplink {
+    color: #1565c0; text-decoration: none; border-bottom: 1px dashed #1565c0;
+  }
+  .maplink:after { content: " 🔎"; font-size: .8em; }
 </style>
 </head>
 <body>
@@ -128,7 +141,7 @@ function row(s, isPast, today) {
     + '<div class="item-title">' + esc(s.title)
     + (isPast ? '<span class="badge gray">지난 모임</span>' : '<span class="badge">' + dday(s.date) + '</span>')
     + '</div><div class="item-sub">📅 ' + esc(s.date) + ' (' + wd(s.date) + ') ' + esc(s.time || '') + '<br>';
-  if (s.place) h += '📍 ' + esc(s.place) + '<br>';
+  if (s.place) h += '📍 <a class="maplink" href="https://map.naver.com/p/search/' + encodeURIComponent(s.place) + '" target="_blank" rel="noopener">' + esc(s.place) + '</a><br>';
   if (s.memo) h += '📝 ' + esc(s.memo);
   h += '</div></div>';
   return h;
@@ -210,7 +223,7 @@ function renderM() {
     var h = '<div class="item"><div class="item-title">' + esc(m.name) + '</div><div class="item-sub">';
     if (m.phone) h += '📞 ' + esc(m.phone) + '<br>';
     if (m.car) h += '🚗 ' + esc(m.car) + '<br>';
-    if (m.addr) h += '🏠 ' + esc(m.addr) + '<br>';
+    if (m.addr) h += '🏠 <a class="maplink" href="https://map.naver.com/p/search/' + encodeURIComponent(m.addr) + '" target="_blank" rel="noopener">' + esc(m.addr) + '</a><br>';
     if (m.memo) h += '📝 ' + esc(m.memo);
     h += '</div></div>';
     return h;
